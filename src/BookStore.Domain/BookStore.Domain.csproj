@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domain layer: entities, enums, state machines, domain exceptions.
+       Deliberately has ZERO package references. -->
+</Project>

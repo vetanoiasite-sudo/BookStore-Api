@@ -1,0 +1,1 @@
+import{O as t,Qb as i,wa as a}from"./chunk-F2YYSRR5.js";var n=class e{translations=t(i);transform(r){return r?this.translations.translate(`orderStatus.${r}`):""}static \u0275fac=function(o){return new(o||e)};static \u0275pipe=a({name:"orderStatusLabel",type:e,pure:!1})};export{n as a};

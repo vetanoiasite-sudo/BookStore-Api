@@ -1,0 +1,30 @@
+# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+*.trx
+*.coverage
+
+# --- Secrets and local config ---
+.env
+.env.local
+*.pfx
+secrets.json
+# Real connection strings and keys stay on the machine that needs them.
+appsettings.Production.json
+appsettings.*.local.json
+
+# --- Uploaded files (development) ---
+src/BookStore.Api/wwwroot/uploads/*
+!src/BookStore.Api/wwwroot/uploads/.gitignore
+# Placeholder cover art the development seed points at.
+!src/BookStore.Api/wwwroot/uploads/samples/
+
+# --- Editors / OS ---
+.idea/
+.DS_Store
+Thumbs.db
