@@ -1,0 +1,1 @@
+import{$b as a,P as n,xa as e}from"./chunk-XIFNUNAI.js";var s=class t{translations=n(a);transform(i,r){return this.translations.translate(i,r)}static \u0275fac=function(r){return new(r||t)};static \u0275pipe=e({name:"t",type:t,pure:!1})};export{s as a};

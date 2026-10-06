@@ -1,1 +1,0 @@
-import{O as n,Qb as a,wa as e}from"./chunk-F2YYSRR5.js";var s=class t{translations=n(a);transform(i,r){return this.translations.translate(i,r)}static \u0275fac=function(r){return new(r||t)};static \u0275pipe=e({name:"t",type:t,pure:!1})};export{s as a};

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600">
+  <rect width="900" height="200" fill="#CE1126"/>
+  <rect y="200" width="900" height="200" fill="#FFFFFF"/>
+  <rect y="400" width="900" height="200" fill="#000000"/>
+  <!-- The Eagle of Saladin, simplified to read at icon size. -->
+  <g fill="#C09300">
+    <path d="M450 228 c-10 0 -18 8 -18 18 c0 6 3 11 7 14 l-31 6 c-22 4 -40 18 -50 38 l-10 20 c18 -10 36 -14 54 -12 l0 46 c0 14 12 26 26 26 l44 0 c14 0 26 -12 26 -26 l0 -46 c18 -2 36 2 54 12 l-10 -20 c-10 -20 -28 -34 -50 -38 l-31 -6 c4 -3 7 -8 7 -14 c0 -10 -8 -18 -18 -18 z"/>
+    <path d="M410 384 l80 0 l-10 14 l-60 0 z"/>
+  </g>
+</svg>

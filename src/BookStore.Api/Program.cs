@@ -59,10 +59,10 @@ try
 
     var app = builder.Build();
 
-    // Bring the schema up to date, and in Development fill an empty database with the
-    // sample catalogue and the four test accounts. Both steps are configurable so a
-    // production deployment can migrate through its own pipeline instead.
-    var applyMigrations = builder.Configuration.GetValue("Database:AutoMigrate", app.Environment.IsDevelopment());
+    // Bring the schema up to date on every start, in every environment, and in
+    // Development fill an empty database with the sample catalogue and the four test
+    // accounts. Set Database:AutoMigrate to false to migrate through a pipeline instead.
+    var applyMigrations = builder.Configuration.GetValue("Database:AutoMigrate", true);
     var seedData = builder.Configuration.GetValue("Seed:Enabled", false);
 
     if (applyMigrations || seedData)

@@ -13,7 +13,7 @@ public static class CorsSetup
         IConfiguration configuration)
     {
         var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                      ?? ["http://localhost:4200"];
+                      ?? ["https://vastore.vetanoia.com"];
 
         services.AddCors(options => options.AddPolicy(PolicyName, policy => policy
             .WithOrigins(origins)
