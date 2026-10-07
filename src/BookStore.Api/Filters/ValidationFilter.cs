@@ -58,7 +58,7 @@ public sealed class ValidationFilter : IAsyncActionFilter
     /// Matches the JSON naming the API uses, so a client can map an error straight
     /// onto the field it submitted.
     /// </summary>
-    private static string ToCamelCase(string property)
+    internal static string ToCamelCase(string property)
     {
         if (string.IsNullOrEmpty(property))
         {

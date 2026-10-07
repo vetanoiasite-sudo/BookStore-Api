@@ -5,7 +5,6 @@ using BookStore.Infrastructure.Identity;
 using BookStore.Infrastructure.Messaging;
 using BookStore.Infrastructure.Notifications;
 using BookStore.Infrastructure.Ordering;
-using BookStore.Infrastructure.Recognition;
 using BookStore.Infrastructure.Persistence;
 using BookStore.Infrastructure.Persistence.Interceptors;
 using BookStore.Infrastructure.Catalog;
@@ -42,10 +41,6 @@ public static class DependencyInjection
         // In-app only for now. A channel that also sends mail or a push message
         // replaces this registration; no use case knows the difference.
         services.AddScoped<INotificationService, InAppNotificationService>();
-
-        // Stands in for the OCR provider that will eventually read a cover, so the
-        // seller journey and its contract exist before one is chosen.
-        services.AddScoped<IBookRecognitionService, MockBookRecognitionService>();
 
         // Development mail channel. Swap this registration for a real provider in
         // production; nothing outside this line depends on which one is used.
@@ -209,8 +204,8 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Brings the database up to date and, in Development, fills it with the sample
-    /// catalogue and the four test accounts. Called once during startup.
+    /// Brings the database up to date and puts in place the roles, the platform
+    /// settings and the first administrator. Called once during startup.
     /// </summary>
     public static async Task InitialiseDatabaseAsync(
         this IServiceProvider services,

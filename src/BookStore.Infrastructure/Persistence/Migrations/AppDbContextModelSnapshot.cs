@@ -312,9 +312,6 @@ namespace BookStore.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -322,10 +319,10 @@ namespace BookStore.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("IsActive");
 
+                    b.HasIndex("ParentId");
+
                     b.HasIndex("Slug")
                         .IsUnique();
-
-                    b.HasIndex("ParentId", "SortOrder");
 
                     b.ToTable("Categories", (string)null);
                 });

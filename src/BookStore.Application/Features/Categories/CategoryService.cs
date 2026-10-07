@@ -1,3 +1,4 @@
+using System.Globalization;
 using BookStore.Application.Common.Abstractions;
 using BookStore.Application.Common.Exceptions;
 using BookStore.Domain.Catalog;
@@ -19,6 +20,13 @@ public sealed class CategoryService
     /// and a branch inside that. A deeper tree is harder to browse than it is useful.
     /// </summary>
     public const int MaxDepth = 3;
+
+    /// <summary>
+    /// Siblings are listed alphabetically by their Arabic name. Sorted here rather than
+    /// in SQL, whose default collation orders Arabic by code point, not as a reader would.
+    /// </summary>
+    private static readonly StringComparer ArabicOrder =
+        StringComparer.Create(CultureInfo.GetCultureInfo("ar"), ignoreCase: true);
 
     private readonly IAppDbContext _context;
     private readonly IDateTimeProvider _clock;
@@ -106,7 +114,6 @@ public sealed class CategoryService
             request.NameEn,
             _clock.UtcNow,
             request.ParentId,
-            request.SortOrder,
             request.Slug);
 
         await EnsureParentExistsAsync(request.ParentId, cancellationToken);
@@ -138,7 +145,6 @@ public sealed class CategoryService
         // results point at, and a rename is usually a wording change rather than a
         // decision to break those.
         category.Rename(request.NameAr, request.NameEn, now);
-        category.Reorder(request.SortOrder, now);
         category.SetActive(request.IsActive, now);
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -234,10 +240,9 @@ public sealed class CategoryService
             query = query.Where(category => category.IsActive);
         }
 
-        return await query
-            .OrderBy(category => category.SortOrder)
-            .ThenBy(category => category.NameEn)
-            .ToListAsync(cancellationToken);
+        var categories = await query.ToListAsync(cancellationToken);
+
+        return [.. categories.OrderBy(category => category.NameAr, ArabicOrder)];
     }
 
     private async Task<Category> RequireAsync(Guid id, CancellationToken cancellationToken) =>
@@ -335,7 +340,6 @@ public sealed class CategoryService
             category.NameAr,
             category.NameEn,
             category.IsActive,
-            category.SortOrder,
             directBooks,
             totalBooks,
             children);

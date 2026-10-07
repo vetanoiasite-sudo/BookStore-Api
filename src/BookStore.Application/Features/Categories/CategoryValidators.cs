@@ -3,8 +3,8 @@ using FluentValidation;
 namespace BookStore.Application.Features.Categories;
 
 /// <summary>
-/// Shared rules. Both names are required because the storefront ships in two
-/// languages and a category with one missing would render blank in the other.
+/// Shared rules. The Arabic name is required; the English one is optional, and the
+/// storefront shows the Arabic name in its place when it is missing.
 /// </summary>
 internal static class CategoryRules
 {
@@ -17,8 +17,10 @@ internal static class CategoryRules
             .MinimumLength(2).WithMessage($"The {language} name is too short.")
             .MaximumLength(MaxNameLength).WithMessage($"The {language} name is too long.");
 
-    public static IRuleBuilderOptions<T, int> SortOrder<T>(this IRuleBuilder<T, int> rule) =>
-        rule.InclusiveBetween(0, 9999).WithMessage("Sort order must be between 0 and 9999.");
+    public static IRuleBuilderOptions<T, string?> OptionalCategoryName<T>(
+        this IRuleBuilder<T, string?> rule,
+        string language) =>
+        rule.MaximumLength(MaxNameLength).WithMessage($"The {language} name is too long.");
 }
 
 public sealed class CreateCategoryRequestValidator : AbstractValidator<CreateCategoryRequest>
@@ -26,8 +28,7 @@ public sealed class CreateCategoryRequestValidator : AbstractValidator<CreateCat
     public CreateCategoryRequestValidator()
     {
         RuleFor(request => request.NameAr).CategoryName("Arabic");
-        RuleFor(request => request.NameEn).CategoryName("English");
-        RuleFor(request => request.SortOrder).SortOrder();
+        RuleFor(request => request.NameEn).OptionalCategoryName("English");
 
         RuleFor(request => request.Slug)
             .MaximumLength(CategoryRules.MaxNameLength)
@@ -42,7 +43,6 @@ public sealed class UpdateCategoryRequestValidator : AbstractValidator<UpdateCat
     public UpdateCategoryRequestValidator()
     {
         RuleFor(request => request.NameAr).CategoryName("Arabic");
-        RuleFor(request => request.NameEn).CategoryName("English");
-        RuleFor(request => request.SortOrder).SortOrder();
+        RuleFor(request => request.NameEn).OptionalCategoryName("English");
     }
 }

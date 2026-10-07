@@ -1,12 +1,16 @@
+using System.Text.Json;
 using BookStore.Api.Common;
+using BookStore.Api.Filters;
 using BookStore.Application.Common.Abstractions;
 using BookStore.Application.Common.Exceptions;
 using BookStore.Application.Common.Models;
 using BookStore.Application.Features.Selling;
 using BookStore.Domain.Enums;
 using BookStore.Domain.Identity;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.Api.Controllers.Selling;
 
@@ -40,24 +44,60 @@ public sealed class SellerBooksController : ApiControllerBase
         CancellationToken cancellationToken) =>
         Success(await _books.GetAsync(publicId, cancellationToken));
 
-    /// <summary>Starts a draft listing.</summary>
+    /// <summary>Lists a copy with its photographs and sends it for review.</summary>
     /// <remarks>
-    /// The copy is not public and not for sale. It becomes either once the seller has
-    /// added a cover photograph, submitted it, and the platform has approved it.
+    /// A multipart form: <c>data</c> holds the listing as JSON, <c>cover</c> the cover
+    /// photograph, and <c>photos</c> up to three more. There is no draft step. The copy
+    /// is not public and not for sale until the platform has approved it.
     /// </remarks>
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ApiResponse<SellerBookDetails>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<SellerBookDetails>>> Create(
-        [FromBody] SaveSellerBookRequest request,
+        [FromForm] CreateSellerBookForm form,
+        [FromServices] IValidator<SaveSellerBookRequest> validator,
+        [FromServices] IOptions<JsonOptions> json,
         CancellationToken cancellationToken)
     {
-        var book = await _books.CreateAsync(request, cancellationToken);
+        var request = ReadListing(form.Data, json.Value.JsonSerializerOptions);
 
-        return CreatedResource(
-            $"/api/seller/books/{book.PublicId}",
-            book,
-            "Draft created.");
+        var result = await validator.ValidateAsync(request, cancellationToken);
+        if (!result.IsValid)
+        {
+            throw new AppValidationException(result.Errors
+                .Select(failure => new ValidationError(
+                    ValidationFilter.ToCamelCase(failure.PropertyName),
+                    failure.ErrorMessage))
+                .ToList());
+        }
+
+        EnsureFilePresent(form.Cover, "cover", "Add a cover photograph.");
+
+        var photos = form.Photos ?? [];
+        var uploads = new List<BookImageUpload>();
+
+        try
+        {
+            uploads.Add(Open(form.Cover!, BookImageType.Cover));
+            uploads.AddRange(photos
+                .Where(photo => photo.Length > 0)
+                .Select(photo => Open(photo, BookImageType.Other)));
+
+            var book = await _books.CreateAsync(request, uploads, cancellationToken);
+
+            return CreatedResource(
+                $"/api/seller/books/{book.PublicId}",
+                book,
+                "Sent for review.");
+        }
+        finally
+        {
+            foreach (var upload in uploads)
+            {
+                await upload.Content.DisposeAsync();
+            }
+        }
     }
 
     /// <summary>Applies edits. Allowed while the listing is a draft or was rejected.</summary>
@@ -152,42 +192,61 @@ public sealed class SellerBooksController : ApiControllerBase
         CancellationToken cancellationToken) =>
         Success(await _books.ArchiveAsync(publicId, request, cancellationToken), "Listing withdrawn.");
 
-    /// <summary>Suggests book details from a photograph of the cover.</summary>
-    /// <remarks>
-    /// Nothing is saved. The answer fills in the form, and the seller confirms or
-    /// corrects every field before the listing is created.
-    /// </remarks>
-    [HttpPost("recognize")]
-    [ProducesResponseType(typeof(ApiResponse<BookRecognitionResult>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<ApiResponse<BookRecognitionResult>>> Recognize(
-        IFormFile file,
-        CancellationToken cancellationToken)
-    {
-        EnsureFilePresent(file);
-
-        await using var content = file.OpenReadStream();
-
-        var result = await _books.RecognizeAsync(
-            content,
-            file.FileName,
-            file.ContentType,
-            cancellationToken);
-
-        return Success(result);
-    }
-
     /// <summary>
     /// Model binding leaves a missing file as null rather than as a validation error,
     /// so the check belongs here where the reason can be stated plainly.
     /// </summary>
-    private static void EnsureFilePresent(IFormFile? file)
+    private static void EnsureFilePresent(
+        IFormFile? file,
+        string field = "file",
+        string message = "Choose an image to upload.")
     {
         if (file is null || file.Length == 0)
         {
-            throw new AppValidationException("file", "Choose an image to upload.");
+            throw new AppValidationException(field, message);
         }
     }
+
+    private static BookImageUpload Open(IFormFile file, BookImageType type) =>
+        new(file.OpenReadStream(), file.FileName, file.ContentType, type);
+
+    /// <summary>
+    /// The listing travels as JSON inside the form, so its nested condition block and
+    /// enum values read exactly as they would from a JSON body.
+    /// </summary>
+    private static SaveSellerBookRequest ReadListing(string? data, JsonSerializerOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(data))
+        {
+            throw new AppValidationException("data", "The book details are missing.");
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<SaveSellerBookRequest>(data, options)
+                   ?? throw new AppValidationException("data", "The book details are missing.");
+        }
+        catch (JsonException)
+        {
+            throw new AppValidationException("data", "The book details could not be read.");
+        }
+    }
+}
+
+/// <summary>
+/// The multipart form that creates a listing. Settable properties, because MVC binds
+/// a form through a parameterless constructor.
+/// </summary>
+public sealed class CreateSellerBookForm
+{
+    /// <summary>The listing, as the same JSON the update endpoint takes.</summary>
+    public string? Data { get; init; }
+
+    /// <summary>The cover photograph. Required.</summary>
+    public IFormFile? Cover { get; init; }
+
+    /// <summary>Up to three more photographs.</summary>
+    public List<IFormFile>? Photos { get; init; }
 }
 
 /// <summary>

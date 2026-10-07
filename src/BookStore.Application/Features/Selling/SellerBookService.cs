@@ -30,7 +30,6 @@ public sealed class SellerBookService
     private readonly IAppDbContext _context;
     private readonly IFileStorageService _files;
     private readonly IPublicIdProvider _publicIds;
-    private readonly IBookRecognitionService _recognition;
     private readonly IPlatformSettings _platform;
     private readonly ICurrentUser _currentUser;
     private readonly IDateTimeProvider _clock;
@@ -40,7 +39,6 @@ public sealed class SellerBookService
         IAppDbContext context,
         IFileStorageService files,
         IPublicIdProvider publicIds,
-        IBookRecognitionService recognition,
         IPlatformSettings platform,
         ICurrentUser currentUser,
         IDateTimeProvider clock,
@@ -49,7 +47,6 @@ public sealed class SellerBookService
         _context = context;
         _files = files;
         _publicIds = publicIds;
-        _recognition = recognition;
         _platform = platform;
         _currentUser = currentUser;
         _clock = clock;
@@ -153,11 +150,29 @@ public sealed class SellerBookService
         return Describe(book);
     }
 
-    /// <summary>Starts a new draft. Nothing is public until the platform has reviewed it.</summary>
+    /// <summary>
+    /// Lists a copy together with its photographs and sends it straight for review.
+    /// There is no draft step: the listing, its cover and up to three more photographs
+    /// arrive in one request and are stored together or not at all. Nothing is public
+    /// until the platform has reviewed it.
+    /// </summary>
     public async Task<SellerBookDetails> CreateAsync(
         SaveSellerBookRequest request,
+        IReadOnlyList<BookImageUpload> images,
         CancellationToken cancellationToken = default)
     {
+        if (images.Count(image => image.Type == BookImageType.Cover) != 1)
+        {
+            throw new AppValidationException("cover", "Add a cover photograph.");
+        }
+
+        if (images.Count > Book.MaxImages)
+        {
+            throw new AppValidationException(
+                "photos",
+                $"A book can have at most {Book.MaxImages} photographs.");
+        }
+
         var seller = await RequireSellerAsync(cancellationToken);
         seller.EnsureCanList();
 
@@ -183,11 +198,51 @@ public sealed class SellerBookService
             request.PublicationYear,
             request.PageCount);
 
-        _context.Books.Add(book);
-        await _context.SaveChangesAsync(cancellationToken);
+        var stored = new List<string>();
+
+        try
+        {
+            // The cover goes first so it is the first photograph a reviewer sees.
+            foreach (var upload in images.OrderBy(image => image.Type == BookImageType.Cover ? 0 : 1))
+            {
+                var file = await _files.SaveImageAsync(
+                    upload.Content,
+                    upload.FileName,
+                    upload.ContentType,
+                    $"books/{book.PublicId}",
+                    cancellationToken);
+
+                stored.Add(file.Path);
+
+                book.AddImage(
+                    file.Path,
+                    upload.Type,
+                    file.ContentType,
+                    file.SizeInBytes,
+                    file.Width,
+                    file.Height,
+                    now,
+                    book.Title);
+            }
+
+            book.SubmitForReview(seller.UserId, now);
+
+            _context.Books.Add(book);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            // No row was written, so the files on disk belong to nothing.
+            foreach (var path in stored)
+            {
+                await _files.DeleteAsync(path, CancellationToken.None);
+            }
+
+            throw;
+        }
 
         _logger.LogInformation(
-            "Seller {SellerPublicId} started the draft {BookPublicId}.",
+            "Seller {SellerPublicId} listed {BookPublicId} and sent it for review.",
             seller.PublicId,
             book.PublicId);
 
@@ -227,9 +282,17 @@ public sealed class SellerBookService
             request.PublicationYear,
             request.PageCount);
 
+        // There is no draft to park a listing in: a seller only edits a listing that
+        // came back rejected, and saving the fix sends it for review again.
+        SendForReview(book, seller.UserId, now);
+
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Seller {SellerPublicId} edited {BookPublicId}.", seller.PublicId, publicId);
+        _logger.LogInformation(
+            "Seller {SellerPublicId} edited {BookPublicId} and sent it for review.",
+            seller.PublicId,
+            publicId);
+
         return await GetAsync(book.PublicId, cancellationToken);
     }
 
@@ -347,18 +410,8 @@ public sealed class SellerBookService
         seller.EnsureCanList();
 
         var book = await LoadAsync(seller.Id, publicId, track: true, cancellationToken);
-        var now = _clock.UtcNow;
 
-        // A resubmission is two steps: the rejected listing goes back to the seller,
-        // and then it goes out again. They are stamped a tick apart because a
-        // timeline sorted by time cannot order two rows written at the same instant.
-        if (book.Status == BookStatus.Rejected)
-        {
-            book.ReturnToDraft(seller.UserId, now);
-            now = now.AddTicks(1);
-        }
-
-        book.SubmitForReview(seller.UserId, now);
+        SendForReview(book, seller.UserId, _clock.UtcNow);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
@@ -388,25 +441,23 @@ public sealed class SellerBookService
         return await GetAsync(book.PublicId, cancellationToken);
     }
 
-    // --- Assisted entry -------------------------------------------------------
+    // --- Internals ------------------------------------------------------------
 
     /// <summary>
-    /// Reads a photograph of a cover and suggests what the book is, so the seller can
-    /// confirm rather than type. Nothing is saved: the answer only fills in a form.
+    /// Sends a listing for review. A rejected listing goes back to the seller first and
+    /// then out again; the two steps are stamped a tick apart because a timeline sorted
+    /// by time cannot order two rows written at the same instant.
     /// </summary>
-    public async Task<BookRecognitionResult> RecognizeAsync(
-        Stream content,
-        string fileName,
-        string contentType,
-        CancellationToken cancellationToken = default)
+    private static void SendForReview(Book book, Guid actorUserId, DateTimeOffset now)
     {
-        var seller = await RequireSellerAsync(cancellationToken);
-        seller.EnsureCanList();
+        if (book.Status == BookStatus.Rejected)
+        {
+            book.ReturnToDraft(actorUserId, now);
+            now = now.AddTicks(1);
+        }
 
-        return await _recognition.RecognizeAsync(content, fileName, contentType, cancellationToken);
+        book.SubmitForReview(actorUserId, now);
     }
-
-    // --- Internals ------------------------------------------------------------
 
     /// <summary>
     /// The seller profile behind the caller. A signed-in account without one is a

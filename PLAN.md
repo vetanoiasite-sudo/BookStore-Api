@@ -57,7 +57,7 @@ Dependency rule: Api → Infrastructure → Application → Domain. Domain has z
 11. **Files**: `IFileStorageService` → `LocalFileStorageService` (`wwwroot/uploads/books/{bookPublicId}/{guid}.webp`). Validation: extension allowlist, 5 MB limit, magic-byte sniff, decode + resize with SkiaSharp (guarantees a real image). SkiaSharp replaces ImageSharp because ImageSharp 4.x requires a paid commercial licence.
 12. **Audit**: `AuditLog` written by an EF `SaveChangesInterceptor` for attribute-marked entities, skipping `[SensitiveData]` properties; plus explicit business events.
 13. **Notifications**: `INotificationService` → `InAppNotificationService`, called from use cases on BookApproved/BookRejected/BookSold/OrderPaid/OrderShipped/OrderDelivered/WithdrawalApproved.
-14. **OCR-ready**: `IBookRecognitionService` → `MockBookRecognitionService`. Endpoint `POST /api/seller/books/recognize`.
+14. ~~**OCR-ready**~~: removed. Sellers type the details themselves.
 15. **API envelope**: all responses `{ success, message, data, errors[] }`; global exception middleware maps Validation→400, Unauthorized→401, Forbidden→403, NotFound→404, Conflict/InvalidTransition→409, else 500. Serilog structured logging; secrets and PII excluded.
 16. **No MediatR, no repositories**: Application services use `IAppDbContext` directly. Keeps to "no unnecessary abstractions".
 17. **Configuration**: `appsettings.json` holds no secrets; values bound from env vars (`ConnectionStrings__Default`, `Jwt__Secret`, `Payment__FakeProviderKey`, `Storage__Root`). `.env.example` documents them. User-secrets in Development.
@@ -83,7 +83,7 @@ Indexes per spec §45 plus `Favorite(UserId, BookId)` unique, `Review(OrderItemI
 - `/api/orders` (buyer): create (checkout), list, `{orderNumber}`, `{orderNumber}/confirm-receipt`, `{orderNumber}/cancel`
 - `/api/payments`: create, confirm, `webhook/{provider}`
 - `/api/addresses`, `/api/reviews`, `/api/notifications`, `/api/support/tickets`
-- `/api/seller`: dashboard, books (CRUD + images + submit + archive), sales, wallet, wallet/transactions, withdrawals, books/recognize
+- `/api/seller`: dashboard, books (CRUD + images + submit + archive), sales, wallet, wallet/transactions, withdrawals
 - `/api/admin`: dashboard, books (pending, approve, reject, receive, assign-location, status), inventory (locations, search by publicId/ISBN/title, history), orders (process, pack, ship), users, sellers, payments, wallets (+settle), withdrawals (approve/reject/mark-paid), shipments, reviews, support, categories, reports, audit-logs, settings
 
 Authorization policies: `RequireAdmin`, `RequireStaff` (Admin|Staff), `RequireSeller`, `RequireBuyer`, `RequireVerifiedEmail` (checkout and selling; relaxed in Development).

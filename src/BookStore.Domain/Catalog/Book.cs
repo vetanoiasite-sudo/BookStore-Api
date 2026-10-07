@@ -11,6 +11,9 @@ namespace BookStore.Domain.Catalog;
 /// </summary>
 public sealed class Book : Entity, IAuditable
 {
+    /// <summary>The most photographs a listing may carry: the cover and three more.</summary>
+    public const int MaxImages = 4;
+
     private readonly List<BookImage> _images = [];
     private readonly List<BookStatusHistory> _statusHistory = [];
 
@@ -204,6 +207,13 @@ public sealed class Book : Entity, IAuditable
         string? altText = null)
     {
         EnsureSellerEditable();
+
+        if (_images.Count >= MaxImages)
+        {
+            throw new BusinessRuleException(
+                $"A book can have at most {MaxImages} photographs.",
+                "too_many_images");
+        }
 
         // Only one cover is meaningful, so a replacement demotes the previous one.
         if (type == BookImageType.Cover && CoverImage is { } existingCover)

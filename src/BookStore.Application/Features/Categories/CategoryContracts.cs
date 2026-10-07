@@ -52,7 +52,6 @@ public sealed record CategoryLink(string Slug, string NameAr, string NameEn);
 /// <param name="NameAr">Name in Arabic.</param>
 /// <param name="NameEn">Name in English.</param>
 /// <param name="IsActive">Whether the storefront shows it.</param>
-/// <param name="SortOrder">Position among its siblings.</param>
 /// <param name="DirectBookCount">Books filed directly here, in any status.</param>
 /// <param name="TotalBookCount">Books here and in everything beneath it.</param>
 /// <param name="Children">Sub-categories.</param>
@@ -62,31 +61,26 @@ public sealed record AdminCategoryNode(
     string NameAr,
     string NameEn,
     bool IsActive,
-    int SortOrder,
     int DirectBookCount,
     int TotalBookCount,
     IReadOnlyList<AdminCategoryNode> Children);
 
 /// <param name="NameAr">Name in Arabic.</param>
-/// <param name="NameEn">Name in English.</param>
+/// <param name="NameEn">Optional name in English.</param>
 /// <param name="ParentId">Parent category, or null for a root.</param>
-/// <param name="SortOrder">Position among its siblings.</param>
-/// <param name="Slug">Optional explicit slug; derived from the English name otherwise.</param>
+/// <param name="Slug">Optional explicit slug; derived from the English name, or the Arabic one when there is none.</param>
 public sealed record CreateCategoryRequest(
     string NameAr,
-    string NameEn,
+    string? NameEn = null,
     Guid? ParentId = null,
-    int SortOrder = 0,
     string? Slug = null);
 
 /// <param name="NameAr">Name in Arabic.</param>
-/// <param name="NameEn">Name in English.</param>
-/// <param name="SortOrder">Position among its siblings.</param>
+/// <param name="NameEn">Optional name in English.</param>
 /// <param name="IsActive">Whether the storefront shows it.</param>
 public sealed record UpdateCategoryRequest(
     string NameAr,
-    string NameEn,
-    int SortOrder,
+    string? NameEn,
     bool IsActive);
 
 /// <param name="ParentId">The new parent, or null to make it a root.</param>

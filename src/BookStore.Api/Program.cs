@@ -59,11 +59,12 @@ try
 
     var app = builder.Build();
 
-    // Bring the schema up to date on every start, in every environment, and in
-    // Development fill an empty database with the sample catalogue and the four test
-    // accounts. Set Database:AutoMigrate to false to migrate through a pipeline instead.
+    // Bring the schema up to date on every start, in every environment, then put in
+    // place the roles, the platform settings and the first administrator (from
+    // Admin:Email and Admin:Password). Set Database:AutoMigrate to false to migrate
+    // through a pipeline instead.
     var applyMigrations = builder.Configuration.GetValue("Database:AutoMigrate", true);
-    var seedData = builder.Configuration.GetValue("Seed:Enabled", false);
+    var seedData = builder.Configuration.GetValue("Seed:Enabled", true);
 
     if (applyMigrations || seedData)
     {

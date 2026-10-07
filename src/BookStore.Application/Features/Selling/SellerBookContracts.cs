@@ -170,6 +170,17 @@ public sealed record UploadBookImageRequest
     public string? AltText { get; init; }
 }
 
+/// <summary>One photograph sent with a new listing. The caller owns the stream.</summary>
+/// <param name="Content">The file as uploaded.</param>
+/// <param name="FileName">Name the client sent. Only its extension is looked at.</param>
+/// <param name="ContentType">Type the client declared.</param>
+/// <param name="Type">What the photograph shows.</param>
+public sealed record BookImageUpload(
+    Stream Content,
+    string FileName,
+    string ContentType,
+    BookImageType Type);
+
 /// <param name="Reason">Why the seller is withdrawing the copy. Optional.</param>
 public sealed record ArchiveBookRequest(string? Reason = null);
 

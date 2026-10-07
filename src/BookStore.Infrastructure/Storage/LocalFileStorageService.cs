@@ -14,15 +14,19 @@ namespace BookStore.Infrastructure.Storage;
 /// </summary>
 public sealed class LocalFileStorageService : IFileStorageService
 {
-    /// <summary>Extensions accepted on the way in. The stored file is always JPEG.</summary>
+    /// <summary>
+    /// Extensions accepted on the way in. The stored file is always JPEG. HEIC is not
+    /// among them: the image library cannot decode it on Windows, so accepting it would
+    /// only fail later with a vaguer message.
+    /// </summary>
     private static readonly HashSet<string> AllowedExtensions =
-        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif" };
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
 
     /// <summary>Content types accepted on the way in.</summary>
     private static readonly HashSet<string> AllowedContentTypes =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif",
+            "image/jpeg", "image/jpg", "image/png", "image/webp",
         };
 
     private const string StoredContentType = "image/jpeg";
@@ -118,7 +122,7 @@ public sealed class LocalFileStorageService : IFileStorageService
         if (string.IsNullOrWhiteSpace(extension) || !AllowedExtensions.Contains(extension))
         {
             throw new InvalidUploadException(
-                "Only JPEG, PNG, WebP and HEIC images can be uploaded.",
+                "Only JPEG, PNG and WebP images can be uploaded.",
                 "unsupported_file_type");
         }
 

@@ -142,9 +142,9 @@ public sealed class SaveSellerBookRequestValidator : AbstractValidator<SaveSelle
             .When(request => request.PublicationYear.HasValue);
 
         RuleFor(request => request.PageCount)
+            .NotNull().WithMessage("Enter the number of pages.")
             .InclusiveBetween(1, 20_000)
-            .WithMessage("A page count must be between 1 and 20000.")
-            .When(request => request.PageCount.HasValue);
+            .WithMessage("A page count must be between 1 and 20000.");
     }
 }
 

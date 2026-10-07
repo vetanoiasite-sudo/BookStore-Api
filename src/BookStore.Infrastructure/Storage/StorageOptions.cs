@@ -14,8 +14,8 @@ public sealed class StorageOptions
     /// <summary>URL prefix the stored files are served under.</summary>
     public string PublicBaseUrl { get; set; } = "/uploads";
 
-    /// <summary>Largest upload accepted, before conversion. Five megabytes by default.</summary>
-    public long MaxImageBytes { get; set; } = 5 * 1024 * 1024;
+    /// <summary>Largest upload accepted, before conversion. One megabyte by default.</summary>
+    public long MaxImageBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
     /// Longest edge kept after resizing. A book cover does not need more, and it keeps

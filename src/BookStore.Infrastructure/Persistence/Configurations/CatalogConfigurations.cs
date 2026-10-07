@@ -23,7 +23,7 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(category => category.Slug).IsUnique();
-        builder.HasIndex(category => new { category.ParentId, category.SortOrder });
+        builder.HasIndex(category => category.ParentId);
         builder.HasIndex(category => category.IsActive);
     }
 }
