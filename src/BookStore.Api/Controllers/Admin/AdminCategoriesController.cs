@@ -66,7 +66,7 @@ public sealed class AdminCategoriesController : ApiControllerBase
         return Success("Category moved.");
     }
 
-    /// <summary>Deletes a category that nothing points at any more.</summary>
+    /// <summary>Deletes a category with no sub-categories; its books move up to its parent.</summary>
     [Authorize(Policy = AuthorizationPolicies.RequireAdmin)]
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]

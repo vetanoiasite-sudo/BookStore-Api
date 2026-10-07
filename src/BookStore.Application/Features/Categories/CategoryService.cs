@@ -196,8 +196,9 @@ public sealed class CategoryService
     }
 
     /// <summary>
-    /// Removes a category. Refused while anything still points at it: books would be
-    /// orphaned, and sub-categories would be detached from the tree.
+    /// Removes a category. Refused while it has sub-categories, which would be detached
+    /// from the tree. Books filed in a sub-category move up to its parent; a main
+    /// category has no parent to take them, so it is refused while it holds any.
     /// </summary>
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -213,20 +214,34 @@ public sealed class CategoryService
                 "category_has_children");
         }
 
-        var bookCount = await _context.Books
-            .CountAsync(book => book.CategoryId == id, cancellationToken);
+        var books = await _context.Books
+            .Where(book => book.CategoryId == id)
+            .ToListAsync(cancellationToken);
 
-        if (bookCount > 0)
+        if (books.Count > 0)
         {
-            throw new ConflictException(
-                $"This category still holds {bookCount} books. Move them first, or hide the category instead.",
-                "category_has_books");
+            if (category.ParentId is not { } parentId)
+            {
+                throw new ConflictException(
+                    $"This category still holds {books.Count} books. Move them first, or hide the category instead.",
+                    "category_has_books");
+            }
+
+            var now = _clock.UtcNow;
+            foreach (var book in books)
+            {
+                book.MoveToCategory(parentId, now);
+            }
         }
 
+        // One save, so the books move and the category goes together or not at all.
         _context.Categories.Remove(category);
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Deleted the category {Slug}.", category.Slug);
+        _logger.LogInformation(
+            "Deleted the category {Slug}, moving {BookCount} books to its parent.",
+            category.Slug,
+            books.Count);
     }
 
     // --- Internals -----------------------------------------------------------

@@ -10,7 +10,7 @@
     <path id="g-e" d="M0 0H8V2.5H3V3.8H7V6.2H3V7.5H8V10H0Z"/>
   </defs>
 
-  <polygon points="15,13 64,1.5 99,37 85,86 36,98 1,62" fill="#743014"/>
+  <polygon points="15,13 64,1.5 99,37 85,86 36,98 1,62" fill="#662483"/>
 
   <g fill="#fff" fill-rule="evenodd" transform="rotate(-6 50 50)">
     <g transform="translate(24.5 25) scale(3)">

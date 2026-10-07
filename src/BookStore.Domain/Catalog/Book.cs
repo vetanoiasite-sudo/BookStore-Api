@@ -196,6 +196,16 @@ public sealed class Book : Entity, IAuditable
         Touch(now);
     }
 
+    /// <summary>
+    /// Refiles the book under another category. An administrative change, allowed in
+    /// any status: it happens when the category the book was in is deleted.
+    /// </summary>
+    public void MoveToCategory(Guid categoryId, DateTimeOffset now)
+    {
+        CategoryId = categoryId;
+        Touch(now);
+    }
+
     public BookImage AddImage(
         string path,
         BookImageType type,
